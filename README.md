@@ -82,3 +82,22 @@
 	etc
 
 ```
+
+### Configuration
+
+The Python file has a section to define the following constants
+
+```
+# Start of User Defined Constants
+MAX_FILES                   = 100   # Limit converted VP3 stitch files to PNG images
+TABLE_COLS                  = 6     # Columns in HTML file
+DEBUG                       = False # Trouble Shooting
+faviconURI                  = "https://raw.githubusercontent.com/KurtSanders/Embroidery/f4e6494c4c0d63105bc81259bb854d22aaa46ef9/images/K+N_favicon.svg"
+root_embroidery_directory   = os.path.join(Path.home(), 'Documents/Embroidery Thumbnails')
+catalog_directory           = os.path.join(root_embroidery_directory, 'Catalog')
+html_filename               = os.path.join(catalog_directory, 'Embroidery_image_table.html')
+images_folder               = os.path.join(catalog_directory, 'images')
+favicon_filename            = os.path.join(images_folder, "K+N_favicon.svg")
+downloads_folder            = Path.home() / 'Downloads'
+excluded_folders            = ['Alphabets & Monograms']
+# End of User Defined Constants```
