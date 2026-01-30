@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 from colorama import Fore, Back, Style, init
 from osxmetadata import *
 from pathlib import Path
@@ -10,11 +9,11 @@ import json
 import os
 import os.path
 import pyembroidery
-import re
 import requests
 import send2trash
 import shutil
 import webbrowser
+import re
 
 # Start of User Defined Constants
 MAX_FILES                   = 100   # Limit converted VP3 stitch files to PNG images
@@ -53,14 +52,14 @@ embroideryFoldersDict = {
     }
 }
 
-VXX_dictionary              = {}
+VXX_dictionary      = {}
 fPattern_VXX        = "*.v[ip][3p]"
 fPattern_VP3        = "*.vp3"
 fPattern_VIP        = "*.vip"
 fPattern_JPG        = "*.jpg"
 pPattern_PNG        = "*.png"
 catalogFoldersList  = []
-total_VXX_Keys       = 0
+total_VXX_Keys      = 0
 
 def main():
     init(autoreset=True)
@@ -189,146 +188,6 @@ def main():
     create_image_table_html()
 
     print(f"{Fore.RED}Image catalog generation complete.{Style.RESET_ALL}")
-
-def copy_file(source_file, destination_file):
-    """
-    Copy Source to Destination
-    Args:
-        source_file: The source file to be copied.
-        destination_file (str): The full path name of the target file.
-    """
-
-
-    # Define the source and destination paths
-    # Use absolute paths for clarity or to avoid potential issues
-    print(f"Copying file '{source_file}' to '{destination_file}'")
-    # Ensure the destination directory exists (shutil.copy2 will raise an error otherwise if destination is a directory)
-    destination_dir = os.path.dirname(destination_file)
-    if not os.path.exists(destination_dir):
-        os.makedirs(destination_dir)
-
-    try:
-        shutil.copy2(source_file, destination_file)
-        print(f"File successfully copied from '{source_file}' to '{destination_file}'")
-    except shutil.SameFileError:
-        print("Error: Source and destination represent the same file.")
-    except FileNotFoundError:
-        print(f"Error: Source file '{source_file}' not found.")
-    except PermissionError:
-        print("Error: Permission denied. Check file permissions.")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-
-
-
-def count_nested_key(d, key_name):
-    """
-    Recursively counts the occurrences of a specific key name in a nested dictionary.
-    Args:
-        d (dict): The dictionary to search.
-        key_name (str): The name of the key to count.
-    Returns:
-        int: The total count of the key name.
-    """
-    count = int(key_name in d)  # Check if the key is in the current dictionary
-    for value in d.values():
-        if isinstance(value, dict):
-            # If the value is a dictionary, recurse and add to the count
-            count += count_nested_key(value, key_name)
-        elif isinstance(value, list):
-            # Also handle lists that might contain dictionaries
-            for item in value:
-                if isinstance(item, dict):
-                    count += count_nested_key(item, key_name)
-    return count
-
-
-def getCatalogFolderName(dirpath):
-    # Get the Catalog Folder Index Name for the embroidery file
-    p = Path(dirpath)
-    try:
-        where = p.parts.index('Embroidery Thumbnails')
-        # Get all parts after the specific folder, then join them
-        parentFolderName = p.parts[where + 1]
-        if DEBUG:
-            print(f"Catalog Folder: {parentFolderName}")
-    except ValueError:
-        print(f"'Error: 'Embroidery Thumbnails' not found in the '{dirpath}'")
-        exit(99)
-    return parentFolderName
-
-def cdToHomeFolder():
-    # Change the current working directory
-    try:
-        os.chdir(downloads_folder)
-    except FileNotFoundError:
-        print(f"Error: The directory {downloads_folder} was not found.")
-        exit(99)
-    except Exception as e:
-        print(f"An error occurred changing directory to {downloads_folder}: {e}")
-        exit(99)
-
-def makePic(infile,outfile):
-    # Read the design
-    if DEBUG: print(f"Reading : {infile}")
-    try:
-        pattern = pyembroidery.read(infile)
-    except (TypeError, AttributeError) as e:
-        print(f"An error occurred reading {infile}")
-        print(f"Error: {e}")
-#        removed_item = catalogList.pop()
-#        print(f"Removed bad list item from CatalogList: {removed_item}")
-        remove_file(infile)
-        return
-
-    # Write the image (visual representation)
-    if DEBUG: print(f"Writing Image file to: {outfile}")
-    pyembroidery.write_png(pattern, outfile)
-
-    set_finder_comment(outfile, infile.replace(root_embroidery_directory, ""))
-
-def ask_yes_no(question):
-    """
-    Continues prompting user until they enter a valid 'yes' or 'no' response.
-    Returns True for 'yes', False for 'no'.
-    """
-    while True:
-        # Ask the question and convert input to lowercase
-        reply = input(f"{Fore.RED}{question} (y/n): ").lower().strip()  # .strip() removes leading/trailing whitespace
-
-        if reply in ("yes", "y"):
-            return True
-        elif reply in ("no", "n"):
-            return False
-        else:
-            print(f"{Fore.YELLOW}Sorry, invalid input. Please try again.")
-
-def remove_file(infile):
-    if not os.path.exists(infile):
-        print(f"{Fore.RED}Error: File '{infile}' does not exist.")
-        return
-
-    if ask_yes_no(f"{Fore.RED}Are you sure you want to delete '{infile}'?"):
-            try:
-                send2trash(infile)
-                print(f"{Fore.YELLOW}File '{infile}' moved to trash successfully.")
-            except send2trash.TrashPermissionError:
-                print(f"{Fore.RED}Could not move '{infile}' to trash due to a permission error.")
-            except Exception as e:
-                print(f"{Fore.RED}An unexpected error occurred: {e}")
-    else:
-        print("{Fore.RED}File Deletion cancelled.")
-
-def set_finder_comment(file_path, comment_text):
-    # Ensure the path is an absolute path for best compatibility
-    abs_path = os.path.abspath(file_path)
-
-    try:
-        md = OSXMetaData(abs_path)
-        md.kMDItemFinderComment = comment_text
-        if DEBUG: print(f"Comment set for {file_path}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
 
 def create_image_table_html():
     print(f"\n{Fore.RED}Creating HTML Images File from {Fore.YELLOW}{total_VXX_Keys} {Fore.RED}images")
@@ -580,18 +439,10 @@ def create_image_table_html():
     # Open the URL in a new browser tab (optional, can also use webbrowser.open)
     webbrowser.open_new_tab(file_url)
 
-def camel_to_spaces(camel_str):
-  """
-  Converts a camelCase string to a space-separated string.
-  """
-  # Inserts a space before any capital letter that is followed by a lowercase letter,
-  # or a capital letter that follows a lowercase letter/digit.
-  # This handles cases like "ABCWord" -> "ABC Word" and "myVariableName" -> "my Variable Name"
-  s1 = re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', camel_str)
-  # Inserts a space before any sequence of two or more capital letters
-  # if they are followed by a lowercase letter, to handle acronyms.
-  s2 = re.sub(r'([A-Z])([A-Z][a-z])', r'\1 \2', s1)
-  return s2
+###############################################
+# Functions
+###############################################
+
 
 def count_files_pathlib():
     # Convert the input string path to a Path object
@@ -625,6 +476,160 @@ def download_image_to_folder(image_url, folder_name, image_filename):
 
     except requests.exceptions.RequestException as e:
         print(f"An error occurred during download: {e}")
+
+def remove_file(infile):
+    if not os.path.exists(infile):
+        print(f"{Fore.RED}Error: File '{infile}' does not exist.")
+        return
+
+    if ask_yes_no(f"{Fore.RED}Are you sure you want to delete '{infile}'?"):
+            try:
+                send2trash(infile)
+                print(f"{Fore.YELLOW}File '{infile}' moved to trash successfully.")
+            except send2trash.TrashPermissionError:
+                print(f"{Fore.RED}Could not move '{infile}' to trash due to a permission error.")
+            except Exception as e:
+                print(f"{Fore.RED}An unexpected error occurred: {e}")
+    else:
+        print("{Fore.RED}File Deletion cancelled.")
+
+def ask_yes_no(question):
+    """
+    Continues prompting user until they enter a valid 'yes' or 'no' response.
+    Returns True for 'yes', False for 'no'.
+    """
+    while True:
+        # Ask the question and convert input to lowercase
+        reply = input(f"{Fore.RED}{question} (y/n): ").lower().strip()  # .strip() removes leading/trailing whitespace
+
+        if reply in ("yes", "y"):
+            return True
+        elif reply in ("no", "n"):
+            return False
+        else:
+            print(f"{Fore.YELLOW}Sorry, invalid input. Please try again.")
+
+def copy_file(source_file, destination_file):
+    """
+    Copy Source to Destination
+    Args:
+        source_file: The source file to be copied.
+        destination_file (str): The full path name of the target file.
+    """
+
+
+    # Define the source and destination paths
+    # Use absolute paths for clarity or to avoid potential issues
+    print(f"Copying file '{source_file}' to '{destination_file}'")
+    # Ensure the destination directory exists (shutil.copy2 will raise an error otherwise if destination is a directory)
+    destination_dir = os.path.dirname(destination_file)
+    if not os.path.exists(destination_dir):
+        os.makedirs(destination_dir)
+
+    try:
+        shutil.copy2(source_file, destination_file)
+        print(f"File successfully copied from '{source_file}' to '{destination_file}'")
+    except shutil.SameFileError:
+        print("Error: Source and destination represent the same file.")
+    except FileNotFoundError:
+        print(f"Error: Source file '{source_file}' not found.")
+    except PermissionError:
+        print("Error: Permission denied. Check file permissions.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+
+
+def count_nested_key(d, key_name):
+    """
+    Recursively counts the occurrences of a specific key name in a nested dictionary.
+    Args:
+        d (dict): The dictionary to search.
+        key_name (str): The name of the key to count.
+    Returns:
+        int: The total count of the key name.
+    """
+    count = int(key_name in d)  # Check if the key is in the current dictionary
+    for value in d.values():
+        if isinstance(value, dict):
+            # If the value is a dictionary, recurse and add to the count
+            count += count_nested_key(value, key_name)
+        elif isinstance(value, list):
+            # Also handle lists that might contain dictionaries
+            for item in value:
+                if isinstance(item, dict):
+                    count += count_nested_key(item, key_name)
+    return count
+
+
+def getCatalogFolderName(dirpath):
+    # Get the Catalog Folder Index Name for the embroidery file
+    p = Path(dirpath)
+    try:
+        where = p.parts.index('Embroidery Thumbnails')
+        # Get all parts after the specific folder, then join them
+        parentFolderName = p.parts[where + 1]
+        if DEBUG:
+            print(f"Catalog Folder: {parentFolderName}")
+    except ValueError:
+        print(f"'Error: 'Embroidery Thumbnails' not found in the '{dirpath}'")
+        exit(99)
+    return parentFolderName
+
+def cdToHomeFolder():
+    # Change the current working directory
+    try:
+        os.chdir(downloads_folder)
+    except FileNotFoundError:
+        print(f"Error: The directory {downloads_folder} was not found.")
+        exit(99)
+    except Exception as e:
+        print(f"An error occurred changing directory to {downloads_folder}: {e}")
+        exit(99)
+
+def makePic(infile,outfile):
+    # Read the design
+    if DEBUG: print(f"Reading : {infile}")
+    try:
+        pattern = pyembroidery.read(infile)
+    except (TypeError, AttributeError) as e:
+        print(f"An error occurred reading {infile}")
+        print(f"Error: {e}")
+#        removed_item = catalogList.pop()
+#        print(f"Removed bad list item from CatalogList: {removed_item}")
+        remove_file(infile)
+        return
+
+    # Write the image (visual representation)
+    if DEBUG: print(f"Writing Image file to: {outfile}")
+    pyembroidery.write_png(pattern, outfile)
+
+    set_finder_comment(outfile, infile.replace(root_embroidery_directory, ""))
+
+def set_finder_comment(file_path, comment_text):
+    # Ensure the path is an absolute path for best compatibility
+    abs_path = os.path.abspath(file_path)
+
+    try:
+        md = OSXMetaData(abs_path)
+        md.kMDItemFinderComment = comment_text
+        if DEBUG: print(f"Comment set for {file_path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def camel_to_spaces(camel_str):
+  """
+  Converts a camelCase string to a space-separated string.
+  """
+  # Inserts a space before any capital letter that is followed by a lowercase letter,
+  # or a capital letter that follows a lowercase letter/digit.
+  # This handles cases like "ABCWord" -> "ABC Word" and "myVariableName" -> "my Variable Name"
+  s1 = re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', camel_str)
+  # Inserts a space before any sequence of two or more capital letters
+  # if they are followed by a lowercase letter, to handle acronyms.
+  s2 = re.sub(r'([A-Z])([A-Z][a-z])', r'\1 \2', s1)
+  return s2
+
 
 if __name__ == "__main__":
     main()
