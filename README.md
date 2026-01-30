@@ -4,6 +4,9 @@
 ### Viewer Screenshot
 ![](https://raw.githubusercontent.com/KurtSanders/Embroidery/refs/heads/main/images/Viewer%20Screenshot.jpg)
 
+## Operating Environment
+ - This Python application was designed and tested on Macos Tahoe 26.2.  
+
 ## Example Embroidery Directory Structure
 
 ### Embroidery Directory Root Directory 
@@ -108,4 +111,6 @@ excluded_folders            = ['Alphabets & Monograms']
 ```
 ### Installation
 
-TBD
+## Requirements
+
+Requirements.txt
