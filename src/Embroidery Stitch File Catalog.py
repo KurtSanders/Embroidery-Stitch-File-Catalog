@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import fileinput
+
 import traits.trait_types
 from colorama import Fore, Back, Style, init
 from osxmetadata import *
@@ -16,14 +18,13 @@ import shutil
 import webbrowser
 import re
 import logging
-# import concurrent.futures
+import concurrent.futures
 
 # import sys
 # import threading
 # import time
 
 # Start of User Defined Constants
-MAX_FILES = 200  # Limit converted VP3 stitch files to PNG images
 TABLE_COLS = 6  # Columns in HTML file
 DEBUG = False  # Trouble Shooting
 faviconURI = "https://raw.githubusercontent.com/KurtSanders/Embroidery/f4e6494c4c0d63105bc81259bb854d22aaa46ef9/images/K+N_favicon.svg"
@@ -102,7 +103,7 @@ logger.addHandler(handler)
 #  Main
 ####################################################################################################################
 
-def main():
+def main(MAX_FILES):
     init(autoreset=True)
     cdToHomeFolder()
     width = 55
@@ -213,6 +214,7 @@ def main():
     #   Iterate over the VXX Master Dictionery
     total_VXX_Keys = count_nested_key(VXX_dictionary, 'VXX_filename')
     pbar = tqdm(total=total_VXX_Keys, unit=" files")
+    makePic_args_list = []
     for CatalogName, inner_dict in VXX_dictionary.items():
         CatalogFolder = os.path.join(images_folder, CatalogName)
 
@@ -234,11 +236,19 @@ def main():
             logger.debug(f" Image: {Image_Filename} {ImageExistsStatus}")
             if not ImageExists:
                 if fnmatch.fnmatch(VXX_Filename, fPattern_VP3):
-                    makePic(VXX_Filename, Image_Filename)
+                    makePic_args_list.append((VXX_Filename, Image_Filename))
             pbar.update()
 
     pbar.close()
 
+    if makePic_args_list:
+        logger.info(f"Sending {len(makePic_args_list)} items to Threads()")
+        thread(makePic_args_list)
+    else:
+        logger.info("No VP3 files to makePic()")
+
+    logger.info("Back from Treads()")
+    exit(0)
     create_image_table_html()
 
     logger.info(f"{Fore.RED}Image catalog generation complete.{Style.RESET_ALL}")
@@ -414,7 +424,6 @@ def create_image_table_html():
     # Iterate the Master Dictionery
     loopIndex = 0
     boxIndex = 0
-    boxHtml = ''
     for CatalogName, inner_dict in VXX_dictionary.items():
         groupTotal = len(inner_dict)
         logger.debug(f"Processing {CatalogName}")
@@ -681,22 +690,20 @@ def cdToHomeFolder():
 def makePic(infile, outfile):
     # Read the design
     logger.debug(f"Reading : {infile}")
-    rc = False
     if infile.endswith(".vp3") and outfile.endswith(".png"):
         try:
             pattern = pyembroidery.read(infile)
         except (TypeError, AttributeError) as e:
             logger.error(f"An error occurred reading {infile}")
             logger.error(f"Error: {e}")
-            remove_file(infile)
-            return rc
+            return f"MadePic Error: ({infile})"
 
         # Write the image (visual representation)
         logger.debug(f"Writing Image file to: {outfile}")
-        rc = pyembroidery.write_png(pattern, outfile)
+        pyembroidery.write_png(pattern, outfile)
 
         set_finder_comment(outfile, infile.replace(root_embroidery_directory, ""))
-    return rc
+    return f"MadePic: ({infile})"
 
 def set_finder_comment(file_path, comment_text):
     # Ensure the path is an absolute path for best compatibility
@@ -723,6 +730,26 @@ def camel_to_spaces(camel_str):
     s2 = re.sub(r'([A-Z])([A-Z][a-z])', r'\1 \2', s1)
     return s2
 
+def thread(args_list):
+
+    if False:
+        for arg in args_list:
+            print(f"{arg[0]}")
+            print(f"{arg[1]}")
+            makePic(arg[0], arg[1])
+        exit(0)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Submit tasks with two arguments
+        futures = [executor.submit(makePic, arg1, arg2) for arg1, arg2 in args_list]
+
+        # Process results as they complete
+        pbar = tqdm(total=len(args_list), unit=" files")
+        for future in concurrent.futures.as_completed(futures):
+            tqdm.write(f"Result: {future.result()}")
+            pbar.update()
+        pbar.close()
+
 if __name__ == "__main__":
 
-    main()
+    main(MAX_FILES=650)
