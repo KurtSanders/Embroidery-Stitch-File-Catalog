@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+import traits.trait_types
 from colorama import Fore, Back, Style, init
 from osxmetadata import *
 from pathlib import Path
 from send2trash import send2trash
 from tqdm import tqdm
 import fnmatch
-import json
+# import json
 import os
 import os.path
 import pyembroidery
@@ -15,13 +16,14 @@ import shutil
 import webbrowser
 import re
 import logging
+# import concurrent.futures
 
 # import sys
 # import threading
 # import time
 
 # Start of User Defined Constants
-MAX_FILES = 100  # Limit converted VP3 stitch files to PNG images
+MAX_FILES = 200  # Limit converted VP3 stitch files to PNG images
 TABLE_COLS = 6  # Columns in HTML file
 DEBUG = False  # Trouble Shooting
 faviconURI = "https://raw.githubusercontent.com/KurtSanders/Embroidery/f4e6494c4c0d63105bc81259bb854d22aaa46ef9/images/K+N_favicon.svg"
@@ -57,15 +59,48 @@ embroideryFoldersDict = {
     }
 }
 
-VXX_dictionary = {}
-fPattern_VXX = "*.v[ip][3p]"
-fPattern_VP3 = "*.vp3"
-fPattern_VIP = "*.vip"
-fPattern_JPG = "*.jpg"
-pPattern_PNG = "*.png"
-catalogFoldersList = []
-total_VXX_Keys = 0
+VXX_dictionary          = {}
+fPattern_VXX            = "*.v[ip][3p]"
+fPattern_VP3            = "*.vp3"
+fPattern_VIP            = "*.vip"
+fPattern_JPG            = "*.jpg"
+pPattern_PNG            = "*.png"
+catalogFoldersList      = []
+VP3_filesToConvertList  = []
+total_VXX_Keys          = 0
 
+# Define the LoggerAdapter subclass
+class DynamicContextFilter(logging.Filter):
+    def __init__(self, prefix=f"{Fore.RESET}", suffix=f"{Back.BLACK}{Fore.RESET}"):
+        super().__init__()
+        self.prefix = prefix
+        self.suffix = suffix
+
+    def filter(self, record):
+        # This modifies the LogRecord instance in place
+        # The standard formatter can now access these attributes
+        record.prefix_data = getattr(record, 'prefix_data', self.prefix)
+        record.suffix_data = getattr(record, 'suffix_data', self.suffix)
+        return True
+
+logger = logging.getLogger("FilteredLogger")
+logger.setLevel(logging.INFO)
+
+# Create and add the filter to the logger/handler
+dynamic_filter = DynamicContextFilter()
+
+handler = logging.StreamHandler()
+handler.addFilter(dynamic_filter)  # Attach filter to the handler
+
+# Set a standard format string that references the new attributes
+formatter = logging.Formatter('%(prefix_data)s%(levelname)s: %(message)s%(suffix_data)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+
+####################################################################################################################
+#  Main
+####################################################################################################################
 
 def main():
     init(autoreset=True)
@@ -103,12 +138,22 @@ def main():
         logger.debug(f"{'Filenames':<{width}}: {filenames}")
 
         matching_files = fnmatch.filter(filenames, fPattern_VP3)
-        if not matching_files:
+        if matching_files:
+            logger.debug(f"{'VP3 Filenames: '} {matching_files}")
+        else:
             matching_files = fnmatch.filter(filenames, fPattern_VIP)
-            if not matching_files:
+            if matching_files:
+                # Check for JPG files in the same directpry
+                matching_JPG_Images = fnmatch.filter(filenames, fPattern_JPG)
+                if matching_JPG_Images:
+                    logger.info(f"{'VIP Filenames: '} {matching_files}")
+                    logger.info(f"{'JPG Filenames: '} {matching_JPG_Images}")
+                else:
+                    logger.warning(f"{Fore.RED}{'VIP Directory: '} {dirpath} has no JPG images")
+                    continue
+            else:
                 continue
 
-        logger.info(f"{'Filenames: '} {matching_files}")
         # Update Folder & File Counter
         index += 1
 
@@ -123,24 +168,27 @@ def main():
             if metaName == lastMetaName:
                 logger.debug(f"{Fore.RED}Skipping {metaName} for {filename}")
                 continue
-            logger.info(f"{Fore.GREEN}Processing {metaName} for {dirpath}/{filename}")
+            logger.debug(f"{Fore.GREEN}Processing {metaName} for {dirpath}/{filename}")
 
             p = Path(filename)
             VXX_Filename = os.path.join(dirpath, filename)
             if fnmatch.fnmatch(VXX_Filename, fPattern_VP3):
+                # Add .png file suffix which will be created by makePic function
                 Image_Filename = f"{os.path.join(images_folder, CatalogName, p.stem)}.png"
             else:
+                #  This is a .VIP file, which cannot be handled by makePic, so grab a 'jpg' file
                 matching_JPG_files = fnmatch.filter(filenames, fPattern_JPG)
                 if matching_JPG_files:
                     logger.debug(f"VXX_Filename {index2}: {VXX_Filename}")
                     logger.debug(f"JPG Images {index2}: {matching_JPG_files}")
-                    Image_Filename = f"{os.path.join(images_folder, CatalogName, matching_JPG_files[0])}"
+#                    Image_Filename = f"{os.path.join(images_folder, CatalogName, matching_JPG_files[0])}"
+                    Image_Filename = f"{os.path.join(dirpath, matching_JPG_files[0])}"
                     logger.debug(f"JPG Image Filename {index2}: {Image_Filename}")
                     Image_infile = f"{os.path.join(dirpath, matching_JPG_files[0])}"
                     logger.debug(f"JPG Image infile {index2}: {Image_infile}")
-                    copy_file(Image_infile, Image_Filename)
+#                    copy_file(Image_infile, Image_Filename)
                 else:
-                    logger.error(f"No JPG Images found: {dirpath}")
+                    logger.debug(f"Skipping: No JPG Images found: {dirpath}")
                     break
 
             logger.debug(f"Catalog Name {index2}: {CatalogName}")
@@ -160,7 +208,7 @@ def main():
 
         if index >= MAX_FILES: break
 
-    logger.debug(json.dumps(VXX_dictionary, indent=4))
+#    print(json.dumps(VXX_dictionary, indent=4))
 
     #   Iterate over the VXX Master Dictionery
     total_VXX_Keys = count_nested_key(VXX_dictionary, 'VXX_filename')
@@ -168,6 +216,7 @@ def main():
     for CatalogName, inner_dict in VXX_dictionary.items():
         CatalogFolder = os.path.join(images_folder, CatalogName)
 
+        # The folders in the embroidery root are used as Catalog Indexes
         if CatalogName not in catalogFoldersList:
             catalogFoldersList.append(CatalogName)
             pbar.set_description(f"Processing {CatalogName}")
@@ -176,9 +225,9 @@ def main():
                 os.makedirs(CatalogFolder, exist_ok=True)
         for metaName, value in inner_dict.items():
             metaName = camel_to_spaces(metaName).strip()
-            VXX_Filename = VXX_dictionary[CatalogName][metaName]['VXX_filename']
-            Image_Filename = VXX_dictionary[CatalogName][metaName]['Image_filename']
-            ImageExists = os.path.exists(Image_Filename)
+            VXX_Filename    = VXX_dictionary[CatalogName][metaName]['VXX_filename']
+            Image_Filename  = VXX_dictionary[CatalogName][metaName]['Image_filename']
+            ImageExists     = os.path.exists(Image_Filename)
             logger.debug(f'{Fore.CYAN}MetaName', metaName)
             logger.debug('  VXX_Filename: ', VXX_Filename)
             ImageExistsStatus = f"{Style.BRIGHT}{Back.GREEN}{Fore.BLACK}[Exists]" if ImageExists else f"{Style.BRIGHT}{Back.RED}{Fore.BLACK}[Not Found.. {Back.GREEN}Created]"
@@ -196,7 +245,7 @@ def main():
 
 
 def create_image_table_html():
-    logger.info(f"\n{Fore.RED}Creating HTML Images File from {Fore.YELLOW}{total_VXX_Keys} {Fore.RED}images")
+    logger.info(f"Creating HTML Images File from {Fore.YELLOW}{total_VXX_Keys} {Fore.RED}images")
     lastParentFolder = ''
 
     #   Begin building of the HTML webpage
@@ -214,6 +263,14 @@ def create_image_table_html():
             th {{ background-color:powderblue; font-family: Verdana; text-align: center; }}
             a {{text-decoration: none; font-family: Verdana; }}
             .highlight {{ background-color: yellow; font-weight: bold; }}
+            .display-box {{
+              display: none; /* Hide the boxes by default */
+              padding: 15px;
+              border: 1px solid #ccc;
+              background-color: #f9f9f9;
+              margin-top: 10px;
+              width: 200px;
+            }}
 
             #imageSearchInput {{
               width: 100%; 
@@ -282,7 +339,7 @@ def create_image_table_html():
             }}
 
         </style>
-        <script>   
+        <script>           
             function filterTable() {{
                   // Declare variables
                   var input, filter, table, tr, td, img, i, j, txtValue, isFound;
@@ -356,6 +413,8 @@ def create_image_table_html():
 
     # Iterate the Master Dictionery
     loopIndex = 0
+    boxIndex = 0
+    boxHtml = ''
     for CatalogName, inner_dict in VXX_dictionary.items():
         groupTotal = len(inner_dict)
         logger.debug(f"Processing {CatalogName}")
@@ -391,10 +450,16 @@ def create_image_table_html():
                     <img style='display:block;' src="{Image_Filename}" alt="{metaName}">
                 </a>
                 <p>
-                    <a href="{VXX_Filename}">{metaName}</a>
+                    <a href="{VXX_Filename}">{metaName} </a>
+                    <a href="#" onclick="toggleDisplayBox(event, 'box{boxIndex}')"> &#128194</a>
+                    <div id="box{boxIndex}" class="display-box">
+                      <h4>Embroidery Thumbnail Folder</h4>
+                      <p>{VXX_Filename.replace(f"{root_embroidery_directory}/",'')}</p>
+                    </div>
                 </p>
             </td>
             """
+            boxIndex += 1
 
             if (loopIndex + 1) % TABLE_COLS == 0 or loopIndex == groupTotal:
                 # Close the table row
@@ -402,29 +467,46 @@ def create_image_table_html():
 
             loopIndex += 1
 
-    html_content += """
+    html_content += f"""
                     </tbody>
                 </table>
-                <script>
+                <script>                
+                     // Function to toggle the visibility of a specific display box
+                    function toggleDisplayBox(event, boxId) {{
+                      event.preventDefault(); // Prevent the default link behavior (e.g., jumping to the top of the page)
+                      
+                      const box = document.getElementById(boxId);
+                      const unicodeValue = 0x1F4C1;
+                      const symbol = String.fromCodePoint(unicodeValue);
+                    
+                      if (box.style.display === 'block') {{
+                        box.style.display = 'none';
+                        event.target.textContent = symbol; // Update link text
+                      }} else {{
+                        box.style.display = 'block';
+                        event.target.textContent = 'Hide Box'; // Update link text
+                      }}
+                    }}
+                
                     // Get the button element
                     const scrollToTopBtn = document.getElementById("scrollToTopBtn");
 
                     // Function to scroll to the top of the page smoothly
-                    const scrollToTop = () => {
-                        window.scrollTo({
+                    const scrollToTop = () => {{
+                        window.scrollTo({{
                             top: 0,
                             behavior: "smooth"
-                        });
-                    };
+                        }});
+                    }};
 
                     // Function to toggle button visibility based on scroll position
-                    const toggleVisibility = () => {
-                        if (window.pageYOffset > 300) { // Show button after scrolling 300px
+                    const toggleVisibility = () => {{
+                        if (window.pageYOffset > 300) {{ // Show button after scrolling 300px
                             scrollToTopBtn.style.display = "block";
-                        } else {
+                        }} else {{
                             scrollToTopBtn.style.display = "none";
-                        }
-                    };
+                        }}
+                    }};
 
                     // Add event listeners
                     window.addEventListener("scroll", toggleVisibility);
@@ -437,7 +519,7 @@ def create_image_table_html():
     with open(html_filename, "w") as f:
         f.write(html_content)
 
-    logger.info(f"\n{Fore.RED}HTML table saved to {Fore.YELLOW}{html_filename}")
+    logger.info(f"HTML table saved to {Fore.YELLOW}{html_filename}")
 
     # Create a file URL (important for local files)
     file_url = f"file://{os.path.abspath(html_filename)}"
@@ -599,22 +681,22 @@ def cdToHomeFolder():
 def makePic(infile, outfile):
     # Read the design
     logger.debug(f"Reading : {infile}")
-    try:
-        pattern = pyembroidery.read(infile)
-    except (TypeError, AttributeError) as e:
-        logger.error(f"An error occurred reading {infile}")
-        logger.error(f"Error: {e}")
-        #        removed_item = catalogList.pop()
-        #        logger.info(f"Removed bad list item from CatalogList: {removed_item}")
-        remove_file(infile)
-        return
+    rc = False
+    if infile.endswith(".vp3") and outfile.endswith(".png"):
+        try:
+            pattern = pyembroidery.read(infile)
+        except (TypeError, AttributeError) as e:
+            logger.error(f"An error occurred reading {infile}")
+            logger.error(f"Error: {e}")
+            remove_file(infile)
+            return rc
 
-    # Write the image (visual representation)
-    logger.debug(f"Writing Image file to: {outfile}")
-    pyembroidery.write_png(pattern, outfile)
+        # Write the image (visual representation)
+        logger.debug(f"Writing Image file to: {outfile}")
+        rc = pyembroidery.write_png(pattern, outfile)
 
-    set_finder_comment(outfile, infile.replace(root_embroidery_directory, ""))
-
+        set_finder_comment(outfile, infile.replace(root_embroidery_directory, ""))
+    return rc
 
 def set_finder_comment(file_path, comment_text):
     # Ensure the path is an absolute path for best compatibility
@@ -641,36 +723,6 @@ def camel_to_spaces(camel_str):
     s2 = re.sub(r'([A-Z])([A-Z][a-z])', r'\1 \2', s1)
     return s2
 
-
-# Define the LoggerAdapter subclass
-class DynamicContextFilter(logging.Filter):
-    def __init__(self, prefix=f"{Fore.RESET}", suffix=f"{Back.BLACK}{Fore.RESET}"):
-        super().__init__()
-        self.prefix = prefix
-        self.suffix = suffix
-
-    def filter(self, record):
-        # This modifies the LogRecord instance in place
-        # The standard formatter can now access these attributes
-        record.prefix_data = getattr(record, 'prefix_data', self.prefix)
-        record.suffix_data = getattr(record, 'suffix_data', self.suffix)
-        return True
-
-
-logger = logging.getLogger("FilteredLogger")
-logger.setLevel(logging.INFO)
-
-# Create and add the filter to the logger/handler
-dynamic_filter = DynamicContextFilter()
-
-handler = logging.StreamHandler()
-handler.addFilter(dynamic_filter)  # Attach filter to the handler
-
-# Set a standard format string that references the new attributes
-formatter = logging.Formatter('%(prefix_data)s%(levelname)s: %(message)s%(suffix_data)s')
-handler.setFormatter(formatter)
-
-logger.addHandler(handler)
-
 if __name__ == "__main__":
+
     main()
