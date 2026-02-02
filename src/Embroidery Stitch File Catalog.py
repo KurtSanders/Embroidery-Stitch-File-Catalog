@@ -120,10 +120,10 @@ def main(MAX_FILES):
                 os.makedirs(location, exist_ok=True)
             else:
                 download_image_to_folder(faviconURI, images_folder, favicon_filename)
-        logger.info(
+        logger.debug(
             f"{Fore.RED}{key:<{width}} : {Fore.YELLOW}{str(embroideryFoldersDict[key]['location']):<80} : {validLocation}")
-    logger.info(f"{Fore.YELLOW}Excluded Folders: {', '.join(excluded_folders)}")
-    logger.info(
+    logger.debug(f"{Fore.YELLOW}Excluded Folders: {', '.join(excluded_folders)}")
+    logger.debug(
         f"{Fore.RED}Starting {Fore.YELLOW}{MAX_FILES:,}{Fore.RED} loops images from {Fore.YELLOW}{count_files_pathlib():,}{Fore.RED} VXX files")
 
     index = 0
@@ -147,10 +147,10 @@ def main(MAX_FILES):
                 # Check for JPG files in the same directpry
                 matching_JPG_Images = fnmatch.filter(filenames, fPattern_JPG)
                 if matching_JPG_Images:
-                    logger.info(f"{'VIP Filenames: '} {matching_files}")
-                    logger.info(f"{'JPG Filenames: '} {matching_JPG_Images}")
+                    logger.debug(f"{'VIP Filenames: '} {matching_files}")
+                    logger.debug(f"{'JPG Filenames: '} {matching_JPG_Images}")
                 else:
-                    logger.warning(f"{Fore.RED}{'VIP Directory: '} {dirpath} has no JPG images")
+                    logger.debug(f"{Fore.RED}{'VIP Directory: '} {dirpath} has no JPG images")
                     continue
             else:
                 continue
@@ -245,10 +245,9 @@ def main(MAX_FILES):
         logger.info(f"Sending {len(makePic_args_list)} items to Threads()")
         thread(makePic_args_list)
     else:
-        logger.info("No VP3 files to makePic()")
+        logger.warning("No VP3 files to makePic()")
 
     logger.info("Back from Treads()")
-    exit(0)
     create_image_table_html()
 
     logger.info(f"{Fore.RED}Image catalog generation complete.{Style.RESET_ALL}")
@@ -703,7 +702,7 @@ def makePic(infile, outfile):
         pyembroidery.write_png(pattern, outfile)
 
         set_finder_comment(outfile, infile.replace(root_embroidery_directory, ""))
-    return f"MadePic: ({infile})"
+    return infile
 
 def set_finder_comment(file_path, comment_text):
     # Ensure the path is an absolute path for best compatibility
@@ -746,10 +745,10 @@ def thread(args_list):
         # Process results as they complete
         pbar = tqdm(total=len(args_list), unit=" files")
         for future in concurrent.futures.as_completed(futures):
-            tqdm.write(f"Result: {future.result()}")
+            pbar.set_description(f"Processing {Path(future.result()).stem}")
             pbar.update()
         pbar.close()
 
 if __name__ == "__main__":
 
-    main(MAX_FILES=650)
+    main(MAX_FILES=1500)
