@@ -61,6 +61,7 @@ embroideryFoldersDict = {
 }
 
 VXX_dictionary          = {}
+Catalog_dictionary      = {}
 fPattern_VXX            = "*.v[ip][3p]"
 fPattern_VP3            = "*.vp3"
 fPattern_VIP            = "*.vip"
@@ -215,6 +216,7 @@ def main(MAX_FILES):
     total_VXX_Keys = count_nested_key(VXX_dictionary, 'VXX_filename')
     pbar = tqdm(total=total_VXX_Keys, unit=" files")
     makePic_args_list = []
+    countItemsPerCatalog = 0
     for CatalogName, inner_dict in VXX_dictionary.items():
         CatalogFolder = os.path.join(images_folder, CatalogName)
 
@@ -237,8 +239,11 @@ def main(MAX_FILES):
             if not ImageExists:
                 if fnmatch.fnmatch(VXX_Filename, fPattern_VP3):
                     makePic_args_list.append((VXX_Filename, Image_Filename))
+            countItemsPerCatalog += 1
             pbar.update()
-
+        Catalog_dictionary.setdefault(CatalogName, {})
+        Catalog_dictionary[CatalogName].setdefault('value', countItemsPerCatalog)
+        countItemsPerCatalog = 0
     pbar.close()
 
     if makePic_args_list:
@@ -401,24 +406,26 @@ def create_image_table_html():
     #   Create Table of Folder Links
     html_content += f"""
         <tr>
-            <th colspan={TABLE_COLS}; style="text-align: center;">
-                Embroidery Catagory Folder Name Links
+            <th colspan={TABLE_COLS}; style="text-align: center";>
+                Embroidery Catagory Folder Name Links ({total_VXX_Keys:,} images)
             </th>
         </tr>
     """
+
     i = 0
-    for catalogName in sorted(VXX_dictionary.keys()):
-        i += 1
-        if i % TABLE_COLS == 0:
-            html_content += "<tr>"
-        html_content += f"""
-        <td style="text-align: center;">
-            <a href="#{catalogName}">{catalogName}</a>
-        </td>
-        """
-        if (i + 1) % TABLE_COLS == 0 or i == len(VXX_dictionary):
-            # Close the table row
-            html_content += "</tr>"
+    for catalogName, inner_dict in sorted(Catalog_dictionary.items()):
+        for inner_key, value in inner_dict.items():
+            i += 1
+            if i % TABLE_COLS == 0:
+                html_content += "<tr>"
+            html_content += f"""
+            <td style="text-align: center";>
+                <a href="#{catalogName}">{catalogName} ({value:,})</a>
+            </td>
+            """
+            if (i + 1) % TABLE_COLS == 0 or i == len(VXX_dictionary):
+                # Close the table row
+                html_content += "</tr>"
 
     # Iterate the Master Dictionery
     loopIndex = 0
@@ -445,15 +452,15 @@ def create_image_table_html():
                 html_content += f"""
                 <tr>
                     <th colspan={TABLE_COLS}>
-                        <div style="text-align: center;" id='{CatalogName}'>{CatalogName}</div>
+                        <div style="text-align: center"; id='{CatalogName}'>{CatalogName}</div>
                     </th>                    
-                </tr>"
+                </tr>
                 """
 
             # Add the table cell with a clickable image
             # The <a> tag links to the full image, and the <img> tag displays a thumbnail (same source for simplicity)
             html_content += f"""
-            <td class="image-cell"; style="text-align: center;">
+            <td class="image-cell"; style="text-align: center";>
                 <a href="{Image_Filename}">
                     <img style='display:block;' src="{Image_Filename}" alt="{metaName}">
                 </a>
@@ -751,4 +758,4 @@ def thread(args_list):
 
 if __name__ == "__main__":
 
-    main(MAX_FILES=1500)
+    main(MAX_FILES=6000)
