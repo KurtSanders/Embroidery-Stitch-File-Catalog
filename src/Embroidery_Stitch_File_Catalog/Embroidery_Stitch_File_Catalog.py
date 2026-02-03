@@ -68,7 +68,7 @@ else:
         log_level = config.get("General", "log_level").lower()
     except (configparser.NoOptionError, configparser.NoSectionError) as er:
         logger.critical(f"{Fore.RED}Error reading section: {Fore.YELLOW}{er}")
-        exit(99)
+        exit(1)
 
 # Dynamically set logger.levels from config.ini
 validLogLevels = ["debug", "info", "warning", "error", "critical"]
