@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 import fileinput
-
-import traits.trait_types
 from colorama import Fore, Back, Style, init
 from osxmetadata import *
 from pathlib import Path
 from send2trash import send2trash
 from tqdm import tqdm
 import fnmatch
-# import json
 import os
 import os.path
 import pyembroidery
@@ -19,22 +16,90 @@ import webbrowser
 import re
 import logging
 import concurrent.futures
+import configparser
 
-# import sys
-# import threading
-# import time
+# Define the LoggerAdapter subclass
+class DynamicContextFilter(logging.Filter):
+    def __init__(self, prefix=f"{Fore.RESET}", suffix=f"{Back.BLACK}{Fore.RESET}"):
+        super().__init__()
+        self.prefix = prefix
+        self.suffix = suffix
 
-# Start of User Defined Constants
-TABLE_COLS = 6  # Columns in HTML file
-DEBUG = False  # Trouble Shooting
+    def filter(self, record):
+        # This modifies the LogRecord instance in place
+        # The standard formatter can now access these attributes
+        record.prefix_data = getattr(record, 'prefix_data', self.prefix)
+        record.suffix_data = getattr(record, 'suffix_data', self.suffix)
+        return True
+
+logger = logging.getLogger("FilteredLogger")
+logger.setLevel(logging.INFO)
+
+# Create and add the filter to the logger/handler
+dynamic_filter = DynamicContextFilter()
+
+handler = logging.StreamHandler()
+handler.addFilter(dynamic_filter)  # Attach filter to the handler
+
+# Set a standard format string that references the new attributes
+formatter = logging.Formatter('%(prefix_data)s%(levelname)s: %(message)s%(suffix_data)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+
+# Get the absolute path to the script's directory
+ROOT_DIR = Path(__file__).parent.absolute()
+config_path = os.path.join(ROOT_DIR, "config.ini") # Assuming config.ini is in the same directory
+
+config = configparser.ConfigParser()
+files_read = config.read(config_path)
+print(f"{Fore.GREEN}Reading User defined Section {Fore.RED}'{config.sections()}'{Fore.GREEN} in config.ini")
+
+if not files_read:
+    logger.critical(f"{Fore.RED}Fatal Error: Configuration file not found at {Fore.MAGENTA}{config_path}")
+    exit(99)
+else:
+    # Proceed with reading sections
+    try:
+        embroidery_directory = config.get("General", "embroidery_directory")
+        excluded_folders = config.get("General", "excluded_folders")
+        MAX_FILES = config.getint("General", "max_files")
+        TABLE_COLS = config.getint("General", "table_cols")
+        log_level = config.get("General", "log_level").lower()
+    except (configparser.NoOptionError, configparser.NoSectionError) as e:
+        logger.critical(f"{Fore.RED}Error reading section: {Fore.YELLOW}{e}")
+        exit(99)
+
+# Dynamically set logger.levels from config.ini
+validLogLevels = ["debug", "info", "warning", "error", "critical"]
+if log_level in validLogLevels:
+    if log_level == "debug":
+        log_level = logging.DEBUG
+    elif log_level == "warning":
+        log_level = logging.WARNING
+    elif log_level == "error":
+        log_level = logging.WARNING
+    elif log_level == "critical":
+        log_level = logging.CRITICAL
+    elif log_level == "error":
+        log_level = logging.ERROR
+    else: log_level = logging.INFO
+    logger.info(f"Logging level set to {Fore.YELLOW}{logging.getLevelName(log_level)}")
+    logger.setLevel(log_level)
+else:
+    logger.critical(f"Invalid Log Level in config.ini: {log_level}.  Valid levels are {', '.join(validLogLevels)}")
+    exit(99)
+
+# Start of Defined Constants
 faviconURI = "https://raw.githubusercontent.com/KurtSanders/Embroidery/f4e6494c4c0d63105bc81259bb854d22aaa46ef9/images/K+N_favicon.svg"
-root_embroidery_directory = os.path.join(Path.home(), 'Documents/Embroidery Thumbnails')
+root_embroidery_directory = os.path.join(Path.home(), embroidery_directory.replace('"', ''))
+print(root_embroidery_directory)
 catalog_directory = os.path.join(root_embroidery_directory, 'Catalog')
 html_filename = os.path.join(catalog_directory, 'Embroidery_image_table.html')
 images_folder = os.path.join(catalog_directory, 'images')
 favicon_filename = os.path.join(images_folder, "K+N_favicon.svg")
 downloads_folder = Path.home() / 'Downloads'
-excluded_folders = ['Alphabets & Monograms']
+excluded_folders = [item.strip() for item in excluded_folders.split(',')]
 # End of User Defined Constants
 
 # Add application folders to exclude list
@@ -71,35 +136,6 @@ catalogFoldersList      = []
 VP3_filesToConvertList  = []
 total_VXX_Keys          = 0
 
-# Define the LoggerAdapter subclass
-class DynamicContextFilter(logging.Filter):
-    def __init__(self, prefix=f"{Fore.RESET}", suffix=f"{Back.BLACK}{Fore.RESET}"):
-        super().__init__()
-        self.prefix = prefix
-        self.suffix = suffix
-
-    def filter(self, record):
-        # This modifies the LogRecord instance in place
-        # The standard formatter can now access these attributes
-        record.prefix_data = getattr(record, 'prefix_data', self.prefix)
-        record.suffix_data = getattr(record, 'suffix_data', self.suffix)
-        return True
-
-logger = logging.getLogger("FilteredLogger")
-logger.setLevel(logging.INFO)
-
-# Create and add the filter to the logger/handler
-dynamic_filter = DynamicContextFilter()
-
-handler = logging.StreamHandler()
-handler.addFilter(dynamic_filter)  # Attach filter to the handler
-
-# Set a standard format string that references the new attributes
-formatter = logging.Formatter('%(prefix_data)s%(levelname)s: %(message)s%(suffix_data)s')
-handler.setFormatter(formatter)
-
-logger.addHandler(handler)
-
 ####################################################################################################################
 #  Main
 ####################################################################################################################
@@ -116,17 +152,17 @@ def main(MAX_FILES):
         if os.path.exists(location):
             validLocation = f"{Style.BRIGHT}{Back.GREEN}{Fore.BLACK}[Exists]"
         else:
+            exit(0)
             validLocation = f"{Style.BRIGHT}{Back.RED}{Fore.BLACK}[Created]"
             if os.path.isdir(location):
                 os.makedirs(location, exist_ok=True)
             else:
                 download_image_to_folder(faviconURI, images_folder, favicon_filename)
-        logger.debug(
+        logger.info(
             f"{Fore.RED}{key:<{width}} : {Fore.YELLOW}{str(embroideryFoldersDict[key]['location']):<80} : {validLocation}")
     logger.debug(f"{Fore.YELLOW}Excluded Folders: {', '.join(excluded_folders)}")
     logger.debug(
         f"{Fore.RED}Starting {Fore.YELLOW}{MAX_FILES:,}{Fore.RED} loops images from {Fore.YELLOW}{count_files_pathlib():,}{Fore.RED} VXX files")
-
     index = 0
     for dirpath, dirnames, filenames in os.walk(root_embroidery_directory, topdown=True):
         dirnames[:] = [d for d in dirnames if d not in excluded_folders]
@@ -252,11 +288,9 @@ def main(MAX_FILES):
     else:
         logger.warning("No VP3 files to makePic()")
 
-    logger.info("Back from Treads()")
     create_image_table_html()
 
     logger.info(f"{Fore.RED}Image catalog generation complete.{Style.RESET_ALL}")
-
 
 def create_image_table_html():
     logger.info(f"Creating HTML Images File from {Fore.YELLOW}{total_VXX_Keys} {Fore.RED}images")
