@@ -93,7 +93,6 @@ else:
 # Start of Defined Constants
 faviconURI = "https://raw.githubusercontent.com/KurtSanders/Embroidery/f4e6494c4c0d63105bc81259bb854d22aaa46ef9/images/K+N_favicon.svg"
 root_embroidery_directory = os.path.join(Path.home(), embroidery_directory.replace('"', ''))
-print(root_embroidery_directory)
 catalog_directory = os.path.join(root_embroidery_directory, 'Catalog')
 html_filename = os.path.join(catalog_directory, 'Embroidery_image_table.html')
 images_folder = os.path.join(catalog_directory, 'images')
@@ -210,21 +209,22 @@ def main():
 
             p = Path(filename)
             VXX_Filename = os.path.join(dirpath, filename)
+            VXX_Rel_Filename = f"{os.path.join('../../',CatalogName,filename)}"
             if fnmatch.fnmatch(VXX_Filename, fPattern_VP3):
                 # Add .png file suffix which will be created by makePic function
                 Image_Filename = f"{os.path.join(images_folder, CatalogName, p.stem)}.png"
+                Image_Rel_Filename = f"{os.path.join('images', CatalogName, p.stem)}.png"
             else:
                 #  This is a .VIP file, which cannot be handled by makePic, so grab a 'jpg' file
                 matching_JPG_files = fnmatch.filter(filenames, fPattern_JPG)
                 if matching_JPG_files:
                     logger.debug(f"VXX_Filename {index2}: {VXX_Filename}")
                     logger.debug(f"JPG Images {index2}: {matching_JPG_files}")
-#                    Image_Filename = f"{os.path.join(images_folder, CatalogName, matching_JPG_files[0])}"
                     Image_Filename = f"{os.path.join(dirpath, matching_JPG_files[0])}"
+                    Image_Rel_Filename = f"{os.path.join('../../', CatalogName, dirpath,matching_JPG_files[0])}"
                     logger.debug(f"JPG Image Filename {index2}: {Image_Filename}")
                     Image_infile = f"{os.path.join(dirpath, matching_JPG_files[0])}"
                     logger.debug(f"JPG Image infile {index2}: {Image_infile}")
-#                    copy_file(Image_infile, Image_Filename)
                 else:
                     logger.debug(f"Skipping: No JPG Images found: {dirpath}")
                     break
@@ -232,7 +232,9 @@ def main():
             logger.debug(f"Catalog Name {index2}: {CatalogName}")
             logger.debug(f"metaName {index2}: {metaName}")
             logger.debug(f"VXX filename {index2}: {filename}")
+            logger.debug(f"VXX Rel filename {index2}: {VXX_Rel_Filename}")
             logger.debug(f"Image_filename {index2}: {Image_Filename}")
+            logger.debug(f"Image_Rel_filename {index2}: {Image_Rel_Filename}")
 
             # Build Catalog Dictionary of VXX Files and Paths
             VXX_dictionary.setdefault(CatalogName, {})
@@ -240,13 +242,13 @@ def main():
             # Add sub-keys and values
             VXX_dictionary[CatalogName][metaName] = {
                 "VXX_filename": VXX_Filename,
-                'Image_filename': Image_Filename
+                "VXX_Rel_filename": VXX_Rel_Filename,
+                'Image_filename': Image_Filename,
+                'Image_Rel_filename': Image_Rel_Filename
             }
             lastMetaName = metaName
 
         if index >= MAX_FILES: break
-
-#    print(json.dumps(VXX_dictionary, indent=4))
 
     #   Iterate over the VXX Master Dictionery
     total_VXX_Keys = count_nested_key(VXX_dictionary, 'VXX_filename')
@@ -470,6 +472,8 @@ def create_image_table_html():
         for metaName, value in inner_dict.items():
             VXX_Filename = VXX_dictionary[CatalogName][metaName]['VXX_filename']
             Image_Filename = VXX_dictionary[CatalogName][metaName]['Image_filename']
+            VXX_Rel_Filename = VXX_dictionary[CatalogName][metaName]['VXX_Rel_filename']
+            Image_Rel_Filename = VXX_dictionary[CatalogName][metaName]['Image_Rel_filename']
             logger.debug(f". metaName   : {metaName}")
             logger.debug(f". VXX_Filename: {VXX_Filename}")
             logger.debug(f". Image_Filename: {Image_Filename}")
@@ -495,11 +499,11 @@ def create_image_table_html():
             # The <a> tag links to the full image, and the <img> tag displays a thumbnail (same source for simplicity)
             html_content += f"""
             <td class="image-cell"; style="text-align: center";>
-                <a href="{Image_Filename}">
-                    <img style='display:block;' src="{Image_Filename}" alt="{metaName}">
+                <a href="{Image_Rel_Filename}">
+                    <img style='display:block;' src="{Image_Rel_Filename}" alt="{metaName}">
                 </a>
                 <p>
-                    <a href="{VXX_Filename}">{metaName} </a>
+                    <a href="{VXX_Rel_Filename}">{metaName} </a>
                     <a href="#" onclick="toggleDisplayBox(event, 'box{boxIndex}')"> &#128194</a>
                     <div id="box{boxIndex}" class="display-box">
                       <h4>Embroidery Thumbnail Folder</h4>
@@ -614,70 +618,6 @@ def download_image_to_folder(image_url, folder_name, image_filename):
 
     except requests.exceptions.RequestException as e:
         logger.error(f"An error occurred during download: {e}")
-
-
-def remove_file(infile):
-    if not os.path.exists(infile):
-        logger.error(f"{Fore.RED}Error: File '{infile}' does not exist.")
-        return
-
-    if ask_yes_no(f"{Fore.RED}Are you sure you want to delete '{infile}'?"):
-        try:
-            send2trash(infile)
-            logger.info(f"{Fore.YELLOW}File '{infile}' moved to trash successfully.")
-        except send2trash.TrashPermissionError:
-            logger.error(f"{Fore.RED}Could not move '{infile}' to trash due to a permission error.")
-        except Exception as e:
-            logger.error(f"{Fore.RED}An unexpected error occurred: {e}")
-    else:
-        logger.warning("{Fore.RED}File Deletion cancelled.")
-
-
-def ask_yes_no(question):
-    """
-    Continues prompting user until they enter a valid 'yes' or 'no' response.
-    Returns True for 'yes', False for 'no'.
-    """
-    while True:
-        # Ask the question and convert input to lowercase
-        reply = input(f"{Fore.RED}{question} (y/n): ").lower().strip()  # .strip() removes leading/trailing whitespace
-
-        if reply in ("yes", "y"):
-            return True
-        elif reply in ("no", "n"):
-            return False
-        else:
-            logger.error(f"{Fore.YELLOW}Sorry, invalid input. Please try again.")
-
-
-def copy_file(source_file, destination_file):
-    """
-    Copy Source to Destination
-    Args:
-        source_file: The source file to be copied.
-        destination_file (str): The full path name of the target file.
-    """
-
-    # Define the source and destination paths
-    # Use absolute paths for clarity or to avoid potential issues
-    logger.debug(f"Copying file '{source_file}' to '{destination_file}'")
-    # Ensure the destination directory exists (shutil.copy2 will raise an error otherwise if destination is a directory)
-    destination_dir = os.path.dirname(destination_file)
-    if not os.path.exists(destination_dir):
-        os.makedirs(destination_dir)
-
-    try:
-        shutil.copy2(source_file, destination_file)
-        logger.info(f"File successfully copied from '{source_file}' to '{destination_file}'")
-    except shutil.SameFileError:
-        logger.error("Error: Source and destination represent the same file.")
-    except FileNotFoundError:
-        logger.warning(f"Error: Source file '{source_file}' not found.")
-    except PermissionError:
-        logger.warning("Error: Permission denied. Check file permissions.")
-    except Exception as e:
-        logger.critical(f"An unexpected error occurred: {e}")
-
 
 def count_nested_key(d, key_name):
     """
