@@ -1,19 +1,41 @@
-[project]
-name = "example_package_YOUR_USERNAME_HERE"
-version = "0.0.1"
-authors = [
-  { name="Example Author", email="author@example.com" },
-]
-description = "A small example package"
-readme = "README.md"
-requires-python = ">=3.9"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-]
-license = "MIT"
-license-files = ["LICEN[CS]E*"]
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[project.urls]
-Homepage = "https://github.com/pypa/sampleproject"
-Issues = "https://github.com/pypa/sampleproject/issues"
+[project]
+name = "Embroidery_Stitch_File_Catalog"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+keywords = ["VP3","VIP","Embroidery","Husqvarna"]
+authors = [
+        {name = "Kurt Sanders", email = "kurt@kurtsanders.com"},
+    ]
+    maintainers = [
+        {name = "Kurt Sanders", email = "kurt@kurtsanders.com"},
+        ]
+description = "View Husqvarna VP3/Vip stitch files as thumbnail images in a HTML Table Viewer"
+dependencies = [
+    'colorama',
+    'osxmetadata',
+    'pathlib',
+    'send2trash',
+    'tqdm',
+    'pyembroidery',
+    'requests',
+    'send2trash',
+    ]
+classifiers = [
+      # How mature is this project? Common values are
+      #   3 - Alpha
+      #   4 - Beta
+      #   5 - Production/Stable
+      "Development Status :: 3 - Alpha",
+
+      # Indicate who your project is intended for
+      "Intended Audience :: End Users/Desktop",
+
+      # Specify the Python versions you support here.
+      "Programming Language :: Python :: 3.11",
+    ]
