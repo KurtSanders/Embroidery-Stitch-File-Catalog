@@ -66,8 +66,8 @@ else:
         MAX_FILES = config.getint("General", "max_files")
         TABLE_COLS = config.getint("General", "table_cols")
         log_level = config.get("General", "log_level").lower()
-    except (configparser.NoOptionError, configparser.NoSectionError) as e:
-        logger.critical(f"{Fore.RED}Error reading section: {Fore.YELLOW}{e}")
+    except (configparser.NoOptionError, configparser.NoSectionError) as er:
+        logger.critical(f"{Fore.RED}Error reading section: {Fore.YELLOW}{er}")
         exit(99)
 
 # Dynamically set logger.levels from config.ini
@@ -140,7 +140,7 @@ total_VXX_Keys          = 0
 #  Main
 ####################################################################################################################
 
-def main(MAX_FILES):
+def main():
     init(autoreset=True)
     cdToHomeFolder()
     width = 55
@@ -792,4 +792,4 @@ def thread(args_list):
 
 if __name__ == "__main__":
 
-    main(MAX_FILES=6000)
+    main()
