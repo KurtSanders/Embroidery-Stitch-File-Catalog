@@ -50,7 +50,6 @@ logger.addHandler(handler)
 # Get the absolute path to the script's directory
 ROOT_DIR = Path(__file__).parent.absolute()
 config_path = os.path.join(ROOT_DIR, "config.ini") # Assuming config.ini is in the same directory
-
 config = configparser.ConfigParser()
 files_read = config.read(config_path)
 print(f"{Fore.GREEN}Reading User defined Section {Fore.RED}'{config.sections()}'{Fore.GREEN} in config.ini")
@@ -124,6 +123,7 @@ embroideryFoldersDict = {
     }
 }
 
+# Defined Application Global Variables
 VXX_dictionary          = {}
 Catalog_dictionary      = {}
 fPattern_VXX            = "*.v[ip][3p]"
