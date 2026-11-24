@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 220" width="960" height="220" role="img" aria-label="Embroidery Stitch File Catalog Banner">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="50%" stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="960" height="220" rx="18" fill="url(#bgGrad)"/>
+
+  <!-- Decorative dashed stitch border -->
+  <rect x="14" y="14" width="932" height="192" rx="12" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="10,7"/>
+
+  <!-- Subtle colorful stitch wave -->
+  <path d="M 40 175 Q 160 150, 280 175 T 520 175 T 760 175 T 920 175" fill="none" stroke="url(#accentGrad)" stroke-width="4" stroke-dasharray="8,6" opacity="0.85"/>
+
+  <!-- Stylized embroidery hoop icon on the left -->
+  <g transform="translate(88, 102)">
+    <circle cx="0" cy="0" r="46" fill="rgba(255,255,255,0.12)" stroke="#fbbf24" stroke-width="5"/>
+    <circle cx="0" cy="0" r="38" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="5,4"/>
+    <rect x="-10" y="-56" width="20" height="10" rx="3" fill="#fbbf24"/>
+    <path d="M -18 8 C -8 -16, 8 -16, 18 8" fill="none" stroke="#f472b6" stroke-width="4" stroke-linecap="round"/>
+    <path d="M -12 16 C 0 -4, 12 -4, 20 16" fill="none" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="0" cy="-12" r="5" fill="#fde047"/>
+  </g>
+
+  <!-- Title & subtitle -->
+  <text x="165" y="88" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Verdana, sans-serif" font-size="34" font-weight="700">
+    Embroidery Stitch File Catalog
+  </text>
+  <text x="165" y="120" fill="#dbeafe" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Verdana, sans-serif" font-size="16">
+    Smart Size Deduplication • Multi-Core Thumbnail Renderer • Interactive HTML Viewer
+  </text>
+
+  <!-- Colorful pill badges -->
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Verdana, sans-serif" font-size="12" font-weight="700">
+    <rect x="165" y="136" width="64" height="24" rx="12" fill="#10b981"/>
+    <text x="197" y="152" fill="#ffffff" text-anchor="middle">.VP3</text>
+
+    <rect x="239" y="136" width="64" height="24" rx="12" fill="#0ea5e9"/>
+    <text x="271" y="152" fill="#ffffff" text-anchor="middle">.HUS</text>
+
+    <rect x="313" y="136" width="64" height="24" rx="12" fill="#f59e0b"/>
+    <text x="345" y="152" fill="#ffffff" text-anchor="middle">.VIP</text>
+
+    <rect x="387" y="136" width="110" height="24" rx="12" fill="#ec4899"/>
+    <text x="442" y="152" fill="#ffffff" text-anchor="middle">Python 3.10+</text>
+
+    <rect x="507" y="136" width="118" height="24" rx="12" fill="#8b5cf6"/>
+    <text x="566" y="152" fill="#ffffff" text-anchor="middle">macOS Ready</text>
+
+    <rect x="635" y="136" width="76" height="24" rx="12" fill="#14b8a6"/>
+    <text x="673" y="152" fill="#ffffff" text-anchor="middle">v1.0.0</text>
+  </g>
+</svg>

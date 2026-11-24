@@ -1,0 +1,4 @@
+pyembroidery
+colorama
+tqdm
+osxmetadata; sys_platform == "darwin"
