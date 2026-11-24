@@ -112,6 +112,7 @@ cp config.sample.ini config.ini
 [General]
 root_embroidery_directory = ~/Documents/Embroidery Thumbnails
 embroidery_start_directory = ~/Documents/Embroidery Thumbnails
+catalog_directory =
 excluded_folders = Alphabets & Monograms, Catalog, Images, Colorcharts
 table_cols = 6
 max_files = 100000
@@ -122,8 +123,9 @@ clean_images = false
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `root_embroidery_directory` | — | Root embroidery library folder (also where `Catalog/` is created). |
+| `root_embroidery_directory` | — | Root embroidery library folder. |
 | `embroidery_start_directory` | — | Starting folder to scan (can be the root or a specific category subfolder). |
+| `catalog_directory` | `<root>/Catalog` | Optional custom output folder for the HTML catalog and `images/` (e.g., an iCloud Drive folder). |
 | `excluded_folders` | `Alphabets & Monograms, Catalog, Images, Colorcharts` | Comma-separated folder names/keywords skipped during scanning (case-insensitive). |
 | `table_cols` | `6` | Maximum number of card columns in the responsive grid on wide screens. |
 | `max_files` | `100000` | Maximum number of deduplicated unique designs to include. |

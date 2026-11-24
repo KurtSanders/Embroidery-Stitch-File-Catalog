@@ -123,6 +123,7 @@ def load_config(script_dir: Path, log: logging.Logger) -> AppConfig:
     try:
         root_dir = Path(parser.get("General", "root_embroidery_directory")).expanduser()
         start_dir = Path(parser.get("General", "embroidery_start_directory")).expanduser()
+        catalog_dir_raw = parser.get("General", "catalog_directory", fallback="").strip()
         excluded_raw = parser.get("General", "excluded_folders", fallback="")
         max_files = parser.getint("General", "max_files", fallback=100000)
         table_cols = max(1, parser.getint("General", "table_cols", fallback=6))
@@ -148,7 +149,7 @@ def load_config(script_dir: Path, log: logging.Logger) -> AppConfig:
         sys.exit(1)
 
     excluded_folders = [item.strip().lower() for item in excluded_raw.split(",") if item.strip()]
-    catalog_dir = root_dir / "Catalog"
+    catalog_dir = Path(catalog_dir_raw).expanduser() if catalog_dir_raw else (root_dir / "Catalog")
     images_dir = catalog_dir / "images"
 
     return AppConfig(
@@ -372,11 +373,24 @@ def scan_embroidery_designs(cfg: AppConfig, log: logging.Logger) -> list[DesignE
             image_file = cfg.images_dir / catalog_name / png_name
             needs_render = cfg.recreate_images or not image_file.exists()
         else:
-            # pyembroidery 1.5.1 does not include a .vip reader; use accompanying image directly
+            # pyembroidery 1.5.1 does not include a .vip reader; copy accompanying image into Catalog/images/ so Catalog is self-contained
             if fallback_jpg is None:
                 log.warning(f"Skipping {best_file.name}: .vip design has no accompanying JPG/PNG in {logical_dir}")
                 continue
-            image_file = fallback_jpg
+            stem_key = best_file.stem.lower()
+            ext_img = fallback_jpg.suffix.lower()
+            if stem_key in used_stems:
+                rel_hash = hashlib.md5(
+                    str(best_file.relative_to(cfg.root_dir)).encode("utf-8")
+                ).hexdigest()[:6]
+                copied_name = f"{best_file.stem}_{rel_hash}{ext_img}"
+            else:
+                used_stems.add(stem_key)
+                copied_name = f"{best_file.stem}{ext_img}"
+            image_file = cfg.images_dir / catalog_name / copied_name
+            if cfg.recreate_images or not image_file.exists():
+                image_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(fallback_jpg, image_file)
             needs_render = False
 
         # Format group filenames cleanly (include relative subfolder if variants span sibling size folders)
@@ -972,6 +986,25 @@ def create_catalog_html(entries: list[DesignEntry], cfg: AppConfig, log: logging
             background: var(--accent-bg);
             color: var(--accent);
         }}
+        .side-nav-top-btn {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: calc(100% - 24px);
+            margin: 10px 12px 4px;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--accent-bg);
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }}
+        .side-nav-top-btn:hover {{
+            background: #cfe2f7;
+        }}
     </style>
 </head>
 <body>
@@ -984,6 +1017,7 @@ def create_catalog_html(entries: list[DesignEntry], cfg: AppConfig, log: logging
         <div class="side-nav-search">
             <input type="search" id="sideNavFilter" placeholder="Filter folders..." autocomplete="off">
         </div>
+        <button type="button" id="sideNavTopBtn" class="side-nav-top-btn">&uarr; Top</button>
         <div id="sideNavList" class="side-nav-list">
 """
     ]
@@ -1293,6 +1327,10 @@ def create_catalog_html(entries: list[DesignEntry], cfg: AppConfig, log: logging
             else openSideNav();
         }});
         document.getElementById("sideNavClose").addEventListener("click", closeSideNav);
+        document.getElementById("sideNavTopBtn").addEventListener("click", () => {{
+            closeSideNav();
+            window.scrollTo({{ top: 0, behavior: "smooth" }});
+        }});
         sideNavBackdrop.addEventListener("click", closeSideNav);
         document.getElementById("sideNavList").addEventListener("click", (event) => {{
             if (event.target.closest(".side-nav-link")) closeSideNav();
